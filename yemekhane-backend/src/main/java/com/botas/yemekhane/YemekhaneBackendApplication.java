@@ -1,4 +1,4 @@
-package com.botas.yemekhane_backend;
+package com.botas.yemekhane;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

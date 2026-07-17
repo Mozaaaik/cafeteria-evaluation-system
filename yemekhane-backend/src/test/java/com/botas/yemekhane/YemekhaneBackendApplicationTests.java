@@ -1,4 +1,4 @@
-package com.botas.yemekhane_backend;
+package com.botas.yemekhane;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

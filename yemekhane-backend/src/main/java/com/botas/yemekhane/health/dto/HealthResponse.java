@@ -9,7 +9,7 @@ package com.botas.yemekhane.health.dto;
  */
 
 public record HealthResponse(
-                String status, // Uygulamanın genel durumu
-                String database, // MySQL bağlantı durumu
-                String databaseName) { // MySQL veritabanı adı
+        String status,            // Uygulamanın genel durumu
+        String database,          // MySQL bağlantı durumu
+        String databaseName) {   // MySQL veritabanı adı
 }

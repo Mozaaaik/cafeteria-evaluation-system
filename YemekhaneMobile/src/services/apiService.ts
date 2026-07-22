@@ -29,6 +29,8 @@ export const handleAuthError = async (err: unknown, navigation?: any): Promise<b
   return true;
 };
 
+// Her istekte kullanılacak ortak HTTP başlıklarını hazırlar; token varsa
+// Authorization başlığına ekler (korumalı endpoint'ler için gereklidir).
 const getHeaders = async () => {
   const token = await AsyncStorage.getItem('authToken');
   const headers: Record<string, string> = {
@@ -40,6 +42,84 @@ const getHeaders = async () => {
   return headers;
 };
 
+
+export const apiService = {
+  login: async(username:string,password:string)=>{
+    const response = await fetch(
+      `${API_BASE_URL}/api/auth/login`,
+      {
+        method:"POST",
+        headers:{
+          "Content-Type": "application/json"
+        },
+
+        body:JSON.stringify({
+          username,
+          password
+        })
+      }
+    );
+
+    console.log("response : " + JSON.stringify(response));
+
+    if(!response.ok){
+      throw new Error("Giriş Başarısız");
+    } 
+
+    const data = await response.json();
+
+    await AsyncStorage.setItem(
+      "authToken",
+      data.accessToken
+    );
+    
+    await AsyncStorage.setItem(
+      "userRole",
+      data.user.role
+    );
+
+    await AsyncStorage.setItem(
+      "userFullName",
+      data.user.fullName
+    );
+
+    return data;
+  },
+
+  register: async (
+    fullname:string,
+    username:string,
+    password:string
+  ) => {
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/auth/register`,
+      {
+        method :"POST",
+        headers:{
+          "Content-Type": "application/json"
+        },
+
+        body:JSON.stringify({
+          fullname,
+          username,
+          password
+        })
+      }
+    );
+
+    if (!response.ok){
+      throw new Error("Kayıt işlemi başarısız");
+    }
+
+
+    return await response.text();
+
+  }
+
+};
+
+/*
 export const apiService = {
   // Oturum Açma
   login: async (username: string, password: string) => {
@@ -187,3 +267,4 @@ export const apiService = {
     return response.json();
   },
 };
+*/

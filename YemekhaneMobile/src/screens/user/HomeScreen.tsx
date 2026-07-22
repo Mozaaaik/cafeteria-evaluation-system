@@ -12,6 +12,7 @@ import {
   View,
   Alert,
   ImageBackground,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService, handleAuthError } from '../../services/apiService';
@@ -42,6 +43,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const [ratings, setRatings] = useState<{ [key: number]: number }>({});
   const [comment, setComment] = useState('');
 
+  // Bugünün yemek menüsünü backend'den çeker; kullanıcı daha önce puan
+  // verdiyse bu puanları forma önceden doldurur
   const fetchTodayMenu = async () => {
     setLoading(true);
     try {
@@ -66,6 +69,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  // Ekran ilk açıldığında: hafızadan kullanıcı adını okuyup ekranda gösterir
+  // ve ardından bugünün menüsünü çeker
   useEffect(() => {
     const fetchUserDataAndMenu = async () => {
       try {
@@ -82,6 +87,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Kullanıcı bir yemeğe yıldız ile puan verdiğinde ilgili puanı state'e kaydeder
   const handleRatingSelect = (itemId: number, score: number) => {
     setRatings(prev => ({
       ...prev,
@@ -89,6 +95,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }));
   };
 
+  // "Değerlendirmeyi Gönder" butonuna basıldığında çalışır: verilen tüm
+  // puanları backend'e gönderir ve menüyü güncel ortalamalarla yeniden çeker
   const handleSubmitEvaluations = async () => {
     // Validate that at least one item was rated
     const ratedCount = Object.keys(ratings).length;
@@ -132,6 +140,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  // Belirtilen yemek için 1-5 arası tıklanabilir yıldız ikonlarını oluşturur
   const renderRatingStars = (itemId: number) => {
     const currentRating = ratings[itemId] || 0;
     const stars = [];
@@ -156,6 +165,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return <View style={styles.starsContainer}>{stars}</View>;
   };
 
+  // Yemek kategorisine göre rozet (badge) rengini döner
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'SOUP':
@@ -170,6 +180,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  // Backend'den gelen İngilizce kategori kodunu ekranda gösterilecek
+  // Türkçe kategori adına çevirir
   const getCategoryDisplayName = (category: string) => {
     switch (category) {
       case 'SOUP': return 'Çorba';
@@ -180,6 +192,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  // Yemek adındaki her kelimenin ilk harfini büyütür (Türkçe'ye özgü
+  // "i/İ" ve "ı/I" dönüşümlerini de doğru şekilde uygular)
   const capitalizeFoodName = (name: string): string => {
     if (!name) return '';
     return name
@@ -205,12 +219,25 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       <SafeAreaView style={styles.overlay}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
         
+        
         {/* Karşılama ve Profil Başlığı Bölümü */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.welcomeText}>Hoş Geldiniz,</Text>
-            <Text style={styles.userNameText}>{fullName}</Text>
+          
+          <View style={styles.headerLeft}>
+            {/* Logo Bölümü */}
+            <Image
+              source={require('../../assets/images/botas_logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeText}>Hoş Geldiniz,</Text>
+              <Text style={styles.userNameText}>{fullName}</Text>
+            </View>
           </View>
+
+
           <TouchableOpacity 
             style={styles.profileButton} 
             onPress={() => navigation && navigation.navigate('Profile')} 

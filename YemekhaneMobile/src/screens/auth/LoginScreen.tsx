@@ -23,9 +23,15 @@ type LoginScreenProps = {
 };
 
 type LoginResponse = {
-  token: string;
-  role: 'ADMIN' | 'USER';
-  fullName?: string;
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    id: number;
+    fullName: string;
+    username: string;
+    role: 'ADMIN' | 'USER';
+  };
 };
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
@@ -34,9 +40,11 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  // Odaklanılan (focus) alana göre input stilini değiştirmek için kullanılır
   const [isUsernameFocused, setIsUsernameFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
+  // kullanıcı daha önce oturumu açık tut'u seçtiyse login ekranını atlaması için;
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
@@ -60,6 +68,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     checkLoginStatus();
   }, [navigation]);
 
+  // Kullanıcı adı ve şifre alanını kontrol et;
   const validateForm = (): boolean => {
     if (!username.trim() || !password.trim()) {
       setErrorMessage('Kullanıcı adı ve şifre boş bırakılamaz.');
@@ -68,6 +77,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     return true;
   };
 
+  // giirş yap ekranında backende istek atar, doğruysa kullanıcı ilgili ekrana yönlendirilir.
   const handleLogin = async () => {
     setErrorMessage('');
 
@@ -93,19 +103,20 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
       const data: LoginResponse = await response.json();
 
-      await AsyncStorage.setItem('authToken', data.token);
-      await AsyncStorage.setItem('userRole', data.role);
-      await AsyncStorage.setItem('userFullName', data.fullName || 'BOTAŞ Personeli');
+      // Oturum bilgilerini cihazda saklayarak sonraki isteklerde kullanılmasını sağla
+      await AsyncStorage.setItem('authToken', data.accessToken);
+      await AsyncStorage.setItem('userRole', data.user.role);
+      await AsyncStorage.setItem('userFullName', data.user.fullName || 'BOTAŞ Personeli');
       await AsyncStorage.setItem('keepLoggedIn', rememberMe ? 'true' : 'false');
 
       if (navigation) {
-        if (data.role === 'ADMIN') {
+        if (data.user.role === 'ADMIN') {
           navigation.replace('AdminHome');
         } else {
           navigation.replace('UserHome');
         }
       } else {
-        console.log('Logged in successfully (no navigation prop):', data.role);
+        console.log('Logged in successfully (no navigation prop):', data.user.role);
       }
     } catch {
       setErrorMessage('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');

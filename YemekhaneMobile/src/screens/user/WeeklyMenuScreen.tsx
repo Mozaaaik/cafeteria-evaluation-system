@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 import { apiService, handleAuthError } from '../../services/apiService';
 import { weeklyStyles as styles } from '../../styles/weeklyStyles';
@@ -50,7 +51,7 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Haftanın günlerini hesaplar (Pazartesi - Cuma)
+  // currentWeekMonday state'inden başlayarak haftanın günlerini hesaplar (Pazartesi - Cuma)
   const getWeekDays = () => {
     const days = [];
     for (let i = 0; i < 5; i++) {
@@ -65,6 +66,8 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
   const startDateStr = formatDateString(weekDays[0]);
   const endDateStr = formatDateString(weekDays[4]);
 
+  // Seçili hafta değiştiğinde (ileri/geri gidildiğinde) o haftanın
+  // Pazartesi-Cuma menülerini backend'den çeker
   useEffect(() => {
     const fetchWeeklyMenu = async () => {
       setLoading(true);
@@ -84,24 +87,28 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
     fetchWeeklyMenu();
   }, [currentWeekMonday, startDateStr, endDateStr, navigation]);
 
+  // Bir önceki haftaya geçer
   const handlePrevWeek = () => {
     const prevMonday = new Date(currentWeekMonday);
     prevMonday.setDate(currentWeekMonday.getDate() - 7);
     setCurrentWeekMonday(prevMonday);
   };
 
+  // Bir sonraki haftaya geçer
   const handleNextWeek = () => {
     const nextMonday = new Date(currentWeekMonday);
     nextMonday.setDate(currentWeekMonday.getDate() + 7);
     setCurrentWeekMonday(nextMonday);
   };
 
+  // Önceki ekrana geri döner
   const handleGoBack = () => {
     if (navigation) {
       navigation.goBack();
     }
   };
 
+  // Yemek kategorisine göre rozet (badge) rengini döner
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'SOUP':
@@ -116,6 +123,8 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
     }
   };
 
+  // Backend'den gelen İngilizce kategori kodunu ekranda gösterilecek
+  // Türkçe kategori adına çevirir
   const getCategoryDisplayName = (category: string) => {
     switch (category) {
       case 'SOUP': return 'Çorba';
@@ -126,6 +135,8 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
     }
   };
 
+  // Yemek adındaki her kelimenin ilk harfini büyütür (Türkçe'ye özgü
+  // "i/İ" ve "ı/I" dönüşümlerini de doğru şekilde uygular)
   const capitalizeFoodName = (name: string): string => {
     if (!name) return '';
     return name
@@ -146,6 +157,7 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
     return menus.find(m => m.menuDate === dateStr);
   };
 
+  // Ekran başlığında gösterilecek "başlangıç - bitiş" tarih aralığı metnini oluşturur
   const formatHeaderDateRange = () => {
     const start = weekDays[0].toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
     const end = weekDays[4].toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -163,9 +175,17 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
 
         {/* Üst Başlık Bölümü */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack} activeOpacity={0.8}>
-            <Text style={styles.backButtonText}>← Geri Dön</Text>
-          </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            {/* Logo Bölümü */}
+            <Image
+              source={require('../../assets/images/botas_logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity style={styles.backButton} onPress={handleGoBack} activeOpacity={0.8}>
+              <Text style={styles.backButtonText}>← Geri</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerTitle}>Haftalık Yemek Listesi</Text>
           <View style={styles.emptyView} />
         </View>

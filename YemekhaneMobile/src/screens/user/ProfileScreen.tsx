@@ -12,6 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileStyles as styles } from '../../styles/profileStyles';
@@ -33,6 +34,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  // Ad soyaddaki her kelimenin ilk harfini büyütür (Türkçe'ye özgü
+  // "i/İ" ve "ı/I" dönüşümlerini de doğru şekilde uygular)
   const capitalizeName = (name: string): string => {
     if (!name) return '';
     return name
@@ -48,6 +51,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
       .join(' ');
   };
 
+  // Ekran açıldığında hafızada saklanan kullanıcı ad-soyad ve rol
+  // bilgilerini okuyup ekranda gösterilecek şekilde hazırlar
   useEffect(() => {
     const loadUserData = async () => {
       setLoading(true);
@@ -83,6 +88,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
+  // Şifre değiştirme formunu doğrular ve (şimdilik simüle edilmiş) güncelleme
+  // isteğini gerçekleştirir
   const handlePasswordChange = () => {
     if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Alert.alert('Hata', 'Lütfen tüm şifre alanlarını doldurun.');
@@ -117,6 +124,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
     }, 1500);
   };
 
+  // Kullanıcı çıkışı için onay diyaloğu gösterir; onaylanırsa hafızadaki
+  // tüm oturum verilerini temizleyip giriş ekranına yönlendirir
   const handleLogout = async () => {
     Alert.alert(
       'Çıkış Yap',
@@ -137,6 +146,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
     );
   };
 
+  // Önceki ekrana geri döner
   const handleGoBack = () => {
     if (navigation) {
       navigation.goBack();
@@ -154,9 +164,17 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 
         {/* Üst Başlık Bölümü */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack} activeOpacity={0.8}>
-            <Text style={styles.backButtonText}>← Geri Dön</Text>
-          </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            {/* Logo Bölümü */}
+            <Image
+              source={require('../../assets/images/botas_logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity style={styles.backButton} onPress={handleGoBack} activeOpacity={0.8}>
+              <Text style={styles.backButtonText}>← Geri</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerTitle}>Profilim</Text>
           <View style={styles.emptyView} />
         </View>

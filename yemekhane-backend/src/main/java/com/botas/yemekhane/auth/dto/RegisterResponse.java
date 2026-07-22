@@ -15,12 +15,11 @@ public record RegisterResponse(
 ) {
     public static RegisterResponse fromUser(User user) {
         return new RegisterResponse(
-            user.getId(),
-            user.getFullName(),
-            user.getUsername(),
-            user.getRole(),
-            Boolean.TRUE.equals(user.getActive()),
-            user.getCreatedAt()
-        );
+                user.getId(),
+                user.getFullName(),
+                user.getUsername(),
+                user.getRole(),
+                Boolean.TRUE.equals(user.getActive()),
+                user.getCreatedAt());
     }
 }

@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { adminStyles as styles } from '../../styles/adminStyles';
@@ -34,6 +35,7 @@ const CATEGORY_ORDER: { [key: string]: number } = {
   'Tatlı/Meyve': 4,
 };
 
+// Bir kategorinin sıralama numarasını döner; tanımsız kategoriler en sona konur
 const getCategoryOrder = (cat: string) => CATEGORY_ORDER[cat] || 99;
 
 const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
@@ -58,7 +60,8 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
 
-  // 1. Ekran açıldığında veya menü tarihi değiştiğinde mevcut menüyü yükleme (Düzenleme / Edit Desteği)
+  // 1. Girilen tarih için daha önce kaydedilmiş bir menü varsa formu onunla
+  //    doldurur (Düzenleme / Edit Desteği), yoksa alanları temizler
   useEffect(() => {
     const checkExistingMenu = async () => {
       if (!menuDate) return;
@@ -92,7 +95,8 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     checkExistingMenu();
   }, [menuDate, navigation]);
 
-  // 2. Raporlar sekmesi aktif olduğunda backend raporlarını çekme
+  // 2. "Değerlendirmeler" sekmesi seçildiğinde yemek bazlı değerlendirme
+  //    raporlarını backend'den çekip ekranda gösterilecek forma çevirir
   useEffect(() => {
     const fetchReports = async () => {
       if (activeTab !== 'reports') return;
@@ -119,7 +123,8 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     fetchReports();
   }, [activeTab, navigation]);
 
-  // 3. Yorumlar sekmesi aktif olduğunda backend yorumlarını çekme
+  // 3. "Yorumlar" sekmesi seçildiğinde personelin yazdığı genel
+  //    değerlendirme/yorumları backend'den çeker
   useEffect(() => {
     const fetchFeedbacks = async () => {
       if (activeTab !== 'feedbacks') return;
@@ -138,6 +143,8 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     fetchFeedbacks();
   }, [activeTab, navigation]);
 
+  // Yönetici çıkışı için onay diyaloğu gösterir; onaylanırsa hafızadaki
+  // tüm oturum verilerini temizleyip giriş ekranına yönlendirir
   const handleLogout = async () => {
     Alert.alert(
       'Çıkış Yap',
@@ -158,6 +165,9 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     );
   };
 
+  // "Menüyü Kaydet" butonuna basıldığında çalışır: form alanlarını doğrular,
+  // seçilen tarih için menüyü (çorba, ana yemek, yardımcı yemek, tatlı)
+  // backend'e kaydeder
   const handleSaveMenu = async () => {
     if (!menuDate.trim() || !soup.trim() || !mainDish.trim() || !sideDish.trim() || !dessert.trim()) {
       Alert.alert('Hata', 'Lütfen menü tarihini ve tüm yemek alanlarını doldurun.');
@@ -195,6 +205,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
       setLoading(false);
     }
   };
+  // Yemek kategorisine göre rozet (badge) rengini döner
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'SOUP':
@@ -209,6 +220,8 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     }
   };
 
+  // Backend'den gelen İngilizce kategori kodunu ekranda gösterilecek
+  // Türkçe kategori adına çevirir
   const getCategoryDisplayName = (category: string) => {
     switch (category) {
       case 'SOUP': return 'Çorba';
@@ -219,6 +232,8 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     }
   };
 
+  // Yemek adındaki her kelimenin ilk harfini büyütür (Türkçe'ye özgü
+  // "i/İ" ve "ı/I" dönüşümlerini de doğru şekilde uygular)
   const capitalizeFoodName = (name: string): string => {
     if (!name) return '';
     return name
@@ -246,9 +261,17 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
 
         {/* Üst Başlık Bölümü */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.welcomeText}>Yönetici Paneli</Text>
-            <Text style={styles.userNameText}>BOTAŞ Yemekhane Yetkilisi</Text>
+          <View style={styles.headerLeft}>
+            {/* Logo Bölümü */}
+            <Image
+              source={require('../../assets/images/botas_logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeText}>Yönetici Paneli</Text>
+              <Text style={styles.userNameText}>BOTAŞ Yemekhane Yetkilisi</Text>
+            </View>
           </View>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
             <Text style={styles.logoutButtonText}>Çıkış Yap</Text>

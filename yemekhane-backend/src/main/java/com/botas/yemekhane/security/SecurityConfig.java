@@ -27,6 +27,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -37,7 +38,8 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(
-        HttpSecurity http
+        HttpSecurity http,
+        JwtAuthenticationConverter jwtAuthenticationConverter
     ) throws Exception {
 
         http
@@ -65,6 +67,20 @@ public class SecurityConfig {
                     "/api/auth/register"
                 )
                 .permitAll() // Bu adreslere herkes erişebilir.
+                /*
+                * Admin panelindeki bütün endpoint'ler yalnızca
+                * ADMIN rolüne açıktır.
+                */
+                .requestMatchers("/api/admin/**")
+                .hasRole("ADMIN")
+
+                /*
+                * Personel ve admin menü görüntüleme endpoint'lerine
+                * erişebilir.
+                */
+                .requestMatchers("/api/menus/**")
+                .hasAnyRole("ADMIN", "USER")
+
                 .anyRequest() // Geriye kalan tüm istekler için
                 .authenticated() // Giriş yapılmış olmalı.
             )
@@ -81,7 +97,36 @@ public class SecurityConfig {
              * Bir kez username + password ile giriş
              * sonraki isteklerde Bearer JWT gönderilir
              */
-            .httpBasic(AbstractHttpConfigurer::disable);
+            .httpBasic(AbstractHttpConfigurer::disable)
+
+
+            /*
+             * ----------------------------------------------------------------------------------
+             * GERÇEK SENARYO İLE JWT DOĞRULAMA AKIŞI (OAuth2 Resource Server)
+             * ----------------------------------------------------------------------------------
+             * Senaryo: Ahmet mobil uygulamadan "Yemek Menüsünü Gör" butonuna bastı.
+             * Mobil uygulama isteğin başlığına şu bilgiyi ekler:
+             * 'Authorization: Bearer eyJhbGciOiJIUzI1Ni...' (Ahmet'in token'ı)
+             *
+             * 1. .oauth2ResourceServer(...):
+             *    Güvenlik kapısı isteği karşılar. Başlıktaki 'Bearer' token'ı yakalar.
+             *
+             * 2. .jwt(...):
+             *    Token'ın geçerliliğini denetler. (İmza doğru mu? Süresi dolmuş mu?)
+             *
+             * 3. .jwtAuthenticationConverter(jwtAuthenticationConverter):
+             *    Token'ın içine bakar (Örn: "roles": ["ROLE_USER"]). Bu bilgiyi okuyup
+             *    Spring Security'ye "Ahmet sistemde USER rolüne sahip doğrulanmış bir kişidir"
+             *    bilgisini işler ve isteğin controller'a (örneğin MenuController) geçmesine izin verir.
+             * ----------------------------------------------------------------------------------
+             */
+            .oauth2ResourceServer(resourceServer -> resourceServer
+                .jwt(jwt -> jwt
+                    .jwtAuthenticationConverter(
+                            jwtAuthenticationConverter
+                    )
+                )
+            );
 
 
         return http.build();

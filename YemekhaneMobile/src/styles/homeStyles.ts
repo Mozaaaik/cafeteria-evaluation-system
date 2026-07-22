@@ -26,6 +26,21 @@ export const homeStyles = StyleSheet.create({
     borderColor: 'rgba(51, 65, 85, 0.4)',
   },
 
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
+
+  welcomeContainer: {
+    flexDirection: 'column',
+  },
+
   welcomeText: {
     color: '#94A3B8',
     fontSize: 13,

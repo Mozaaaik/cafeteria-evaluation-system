@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.botas.yemekhane.auth.dto.LoginRequest;
+import com.botas.yemekhane.auth.dto.LoginResponse;
 import com.botas.yemekhane.auth.dto.RegisterRequest;
 import com.botas.yemekhane.auth.dto.RegisterResponse;
 import com.botas.yemekhane.auth.service.AuthService;
@@ -34,9 +36,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-
-
-
     /*
     * Bu anotasyon, register metodunun
     * POST /api/auth/register isteğini karşılamasını sağlar.
@@ -49,6 +48,22 @@ public class AuthController {
                 RegisterResponse registerResponse = authService.register(request);
                 return ResponseEntity.status(HttpStatus.CREATED).body(registerResponse);
 
+    }
+
+    /*
+    * POST /api/auth/login
+    *
+    * Kullanıcı adı ve şifreyi doğrular.
+    * Başarılıysa JWT ve kullanıcı bilgilerini döndürür.
+    */
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        LoginResponse response =
+                authService.login(request);
+
+        return ResponseEntity.ok(response);
     }
 
 /*
@@ -70,5 +85,14 @@ public class AuthController {
 // Kullanıcı veritabanına kaydedilir
 //      ↓
 // 201 Created + RegisterResponse
+
+// DTO kurallarını tetikler: 
+
+// RegisterRequest
+//  sınıfı içindeki alanlara yazılmış olan şu kuralları kontrol eder:
+
+// fullName: En az 3, en fazla 100 karakter olmalı
+// username: En az 3, en fazla 50 karakter olmalı ve sadece harf, rakam, alt çizgi, nokta, tire içerebilir
+// password: En az 8, en fazla 50 karakter olmalı
 
 }

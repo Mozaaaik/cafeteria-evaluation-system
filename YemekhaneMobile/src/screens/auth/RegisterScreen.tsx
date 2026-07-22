@@ -35,6 +35,8 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [isConfirmPasswordFocused, setIsConfirmPasswordFocused] = useState(false);
 
+  // Kayıt formundaki alanların doluluğunu, şifre uzunluğunu ve şifre
+  // eşleşmesini kontrol eder
   const validateForm = (): boolean => {
     if (!fullName.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
       setErrorMessage('Tüm alanları doldurmanız gerekmektedir.');
@@ -51,6 +53,8 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
     return true;
   };
 
+  // Kayıt Ol butonuna basıldığında çalışır: formu doğrular, backend'e kayıt
+  // isteği atar ve başarılı olursa kullanıcıyı giriş ekranına yönlendirir.
   const handleRegister = async () => {
     setErrorMessage('');
 

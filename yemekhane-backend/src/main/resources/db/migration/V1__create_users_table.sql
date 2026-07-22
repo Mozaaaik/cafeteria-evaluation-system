@@ -7,6 +7,6 @@ CREATE TABLE users (
     password_hash               VARCHAR(255)            NOT NULL,
     role                        ENUM('ADMIN', 'USER')   NOT NULL DEFAULT 'USER',
     active                      BOOLEAN                 NOT NULL DEFAULT TRUE,
-    created_at                  TIMESTAMP               NOT NULL,
-    updated_at                  TIMESTAMP               NOT NULL
+    created_at                  TIMESTAMP               NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  TIMESTAMP               NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

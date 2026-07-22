@@ -26,6 +26,17 @@ export const profileStyles = StyleSheet.create({
     borderColor: 'rgba(51, 65, 85, 0.4)',
   },
 
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  logo: {
+    width: 32,
+    height: 32,
+    marginRight: 8,
+  },
+
   backButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
@@ -48,7 +59,7 @@ export const profileStyles = StyleSheet.create({
   },
 
   emptyView: {
-    width: 80,
+    width: 100, // Logo + Back Button dengesi için
   },
 
   loader: {

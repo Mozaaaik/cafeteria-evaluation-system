@@ -123,6 +123,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+
+		<!--
+			JWT Bearer token doğrulaması:
+			- JWT üretmek için JwtEncoder bileşenlerini getirir.
+			- Authorization: Bearer ... başlığını doğrular.
+			- Token içindeki rolleri Spring Security'ye aktarır.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+		</dependency>
 	</dependencies>
 
 	

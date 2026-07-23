@@ -1,6 +1,7 @@
 package com.botas.yemekhane.menu.repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -50,4 +51,20 @@ public interface DailyMenuRepository
      * Kullanıcı (Mobil/Web) "Bugünün menüsünü getir" (GET /api/menus/today) dediğinde bu metot çağrılır.
      */
     Optional<DailyMenu> findByMenuDate(LocalDate menuDate);
+
+    /*
+     * İKİ TARİH ARASINDAKİ MENÜLERİ GETİRİR
+     *
+     * Spring Data bu metot adından yaklaşık olarak şu sorguyu üretir:
+     * SELECT * FROM daily_menus
+     * WHERE menu_date BETWEEN ? AND ?
+     * ORDER BY menu_date ASC;
+     *
+     * Böylece haftalık ekran Pazartesi-Cuma arasındaki mevcut menüleri
+     * tarihe göre sıralanmış bir liste olarak alır.
+     */
+    List<DailyMenu> findAllByMenuDateBetweenOrderByMenuDateAsc(
+            LocalDate startDate,
+            LocalDate endDate
+    );
 }

@@ -176,13 +176,22 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
 
     setLoading(true);
     try {
-      const items = [
-        { name: soup, category: 'SOUP' },
-        { name: mainDish, category: 'MAIN_DISH' },
-        { name: sideDish, category: 'SIDE_DISH' },
-        { name: dessert, category: 'DESSERT' },
-      ];
-      await apiService.saveMenu(menuDate, items);
+      /*
+       * Backend'deki CreateMenuRequest record'u bir "items" listesi değil,
+       * aşağıdaki beş alanı bekliyor. Alan adlarının Java DTO'sundaki adlarla
+       * birebir aynı olması Spring'in JSON'u doğru nesneye çevirmesini sağlar.
+       */
+      const savedMenu = await apiService.saveMenu({
+        menuDate: menuDate.trim(),
+        soup: soup.trim(),
+        mainCourse: mainDish.trim(),
+        sideDish: sideDish.trim(),
+        dessertOrFruit: dessert.trim(),
+      });
+
+      // Backend HTTP 201 ile kaydettiği menüyü geri döndürür. Buradaki id,
+      // kaydın gerçekten veritabanında oluştuğunu gösteren DailyMenu id'sidir.
+      console.log('Veritabanına kaydedilen menü id:', savedMenu.id);
       Alert.alert(
         'Başarılı',
         `${menuDate} tarihli yemek menüsü sisteme başarıyla kaydedildi.`,
@@ -536,5 +545,4 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
 };
 
 export default AdminHomeScreen;
-
 

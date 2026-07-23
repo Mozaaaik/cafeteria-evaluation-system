@@ -170,10 +170,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     switch (category) {
       case 'SOUP':
       case 'Çorba': return '#38BDF8'; // Sky Blue
+      // Backend enum değeri MAIN_COURSE olarak gelir.
+      case 'MAIN_COURSE':
       case 'MAIN_DISH':
       case 'Ana Yemek': return '#F59E0B'; // Amber
       case 'SIDE_DISH':
       case 'Yardımcı Yemek': return '#10B981'; // Emerald
+      // Backend enum değeri DESSERT_OR_FRUIT olarak gelir.
+      case 'DESSERT_OR_FRUIT':
       case 'DESSERT':
       case 'Tatlı/Meyve': return '#EC4899'; // Pink
       default: return '#94A3B8';
@@ -185,9 +189,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const getCategoryDisplayName = (category: string) => {
     switch (category) {
       case 'SOUP': return 'Çorba';
+      case 'MAIN_COURSE': return 'Ana Yemek';
       case 'MAIN_DISH': return 'Ana Yemek';
       case 'SIDE_DISH': return 'Yardımcı Yemek';
-      case 'DESSERT': return 'Tatlı/Meyve';
+      case 'DESSERT_OR_FRUIT': return 'Tatlı veya Meyve';
+      case 'DESSERT': return 'Tatlı veya Meyve';
       default: return category;
     }
   };
@@ -336,5 +342,4 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 };
 
 export default HomeScreen;
-
 

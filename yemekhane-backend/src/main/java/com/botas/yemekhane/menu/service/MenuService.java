@@ -1,5 +1,8 @@
 package com.botas.yemekhane.menu.service;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -147,6 +150,48 @@ public class MenuService {
      */
     private String normalizeName(String name) {
         return name.trim();
+    }
+
+    /*
+     * VERİLEN TARİHE AİT MENÜYÜ GETİRİR
+     *
+     * readOnly = true:
+     * Bu işlem yalnızca SELECT sorgusu çalıştırır; veritabanında değişiklik
+     * yapmayacağını Spring/Hibernate'e bildirir.
+     *
+     * Repository Optional döndürür. Menü bulunamazsa null döndürmek yerine
+     * Optional.empty() korunur; menünün bulunamadığına hangi HTTP cevabının
+     * verileceğine Controller karar verir.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<MenuResponse> getMenuByDate(LocalDate menuDate) {
+        return dailyMenuRepository
+                .findByMenuDate(menuDate)
+                /*
+                 * DailyMenu entity'sini frontend'e doğrudan açmıyoruz.
+                 * MenuResponse DTO'suna çevirerek yalnızca id, tarih ve
+                 * yemek listesini gönderiyoruz.
+                 */
+                .map(MenuResponse::fromDailyMenu);
+    }
+
+    /*
+     * HAFTALIK / TARİH ARALIĞINDAKİ MENÜLERİ GETİRİR
+     *
+     * Repository'den gelen List<DailyMenu> entity listesindeki her elemanı
+     * frontend'e uygun MenuResponse DTO'suna dönüştürür.
+     * Hiç menü yoksa hata yerine boş JSON listesi ([]) döner.
+     */
+    @Transactional(readOnly = true)
+    public List<MenuResponse> getMenusBetween(
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return dailyMenuRepository
+                .findAllByMenuDateBetweenOrderByMenuDateAsc(startDate, endDate)
+                .stream()
+                .map(MenuResponse::fromDailyMenu)
+                .toList();
     }
 }
 

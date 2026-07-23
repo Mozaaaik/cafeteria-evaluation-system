@@ -14,9 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginStyles as styles } from '../../styles/loginStyles';
-
-// TODO: Backend ekibiyle netleşince gerçek adresi buraya yaz.
-const API_BASE_URL = 'http://10.0.2.2:8080';
+import { apiService } from '../../services/apiService';
 
 type LoginScreenProps = {
   navigation?: any; // Projede React Navigation kullanılıyorsa buraya doğru tipi bağlayacağız
@@ -88,25 +86,12 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      // HTTP isteği apiService üzerinden gider. Böylece login isteği, token
+      // saklama işlemi ve apiService içindeki console.log tek yerde çalışır.
+      const data: LoginResponse = await apiService.login(username, password);
 
-      if (!response.ok) {
-        setErrorMessage('Kullanıcı adı veya şifre hatalı.');
-        return;
-      }
-
-      const data: LoginResponse = await response.json();
-
-      // Oturum bilgilerini cihazda saklayarak sonraki isteklerde kullanılmasını sağla
-      await AsyncStorage.setItem('authToken', data.accessToken);
-      await AsyncStorage.setItem('userRole', data.user.role);
-      await AsyncStorage.setItem('userFullName', data.user.fullName || 'BOTAŞ Personeli');
+      // Token ve kullanıcı bilgileri apiService.login içinde kaydediliyor.
+      // Bu ekrana özel olan "oturumu açık tut" tercihini burada saklıyoruz.
       await AsyncStorage.setItem('keepLoggedIn', rememberMe ? 'true' : 'false');
 
       if (navigation) {
@@ -238,6 +223,5 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 };
 
 export default LoginScreen;
-
 
 

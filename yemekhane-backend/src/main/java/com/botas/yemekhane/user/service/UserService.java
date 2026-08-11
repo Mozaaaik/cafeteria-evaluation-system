@@ -11,6 +11,8 @@ import com.botas.yemekhane.user.repository.UserRepository;
 
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.botas.yemekhane.common.exception.InvalidCredentialsException;
+import com.botas.yemekhane.user.exception.UsernameAlreadyExistsException;
 
 @Service
 public class UserService {
@@ -59,9 +61,7 @@ public class UserService {
         validatePassword(rawPassword);
 
         if (userRepository.existsByUsername(normalizedUsername)) {
-            throw new IllegalArgumentException(
-                "Bu username kullanılmaktadır: " + normalizedUsername
-            );
+            throw new UsernameAlreadyExistsException(normalizedUsername);
         }
 
         String passwordHash = passwordEncoder.encode(rawPassword);
@@ -78,6 +78,16 @@ public class UserService {
 
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        User user = getUserByUsername(username);
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Mevcut şifre hatalı.");
+        }
+        validatePassword(newPassword);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
     }
 
     /*

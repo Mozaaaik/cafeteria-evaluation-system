@@ -25,4 +25,9 @@ public class InvalidCredentialsException extends RuntimeException {
         // Bu sayede e.getMessage() dendiğinde bu metin okunur.
         super("Kullanıcı adı veya şifre hatalı.");
     }
+
+
+    public InvalidCredentialsException(String message) {
+        super(message);
+    }
 }

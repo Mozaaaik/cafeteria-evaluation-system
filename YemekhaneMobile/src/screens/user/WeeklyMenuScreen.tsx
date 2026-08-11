@@ -11,12 +11,13 @@ import {
   Image,
 } from 'react-native';
 import { apiService, handleAuthError } from '../../services/apiService';
-import { weeklyStyles as styles } from '../../styles/weeklyStyles';
+import { weeklyStyles } from '../../styles/weeklyStyles';
+import { useTheme, useThemedStyles } from '../../theme/ThemeContext';
 
 type MenuItem = {
   id: number;
   name: string;
-  category: 'Çorba' | 'Ana Yemek' | 'Yardımcı Yemek' | 'Tatlı/Meyve';
+  category: string;
 };
 
 type Menu = {
@@ -46,6 +47,8 @@ const getMonday = (d: Date): Date => {
 };
 
 const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(weeklyStyles);
   const [currentWeekMonday, setCurrentWeekMonday] = useState<Date>(getMonday(new Date()));
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(false);
@@ -175,7 +178,7 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.overlay}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme.colors.statusBar} backgroundColor="transparent" translucent />
 
         {/* Üst Başlık Bölümü */}
         <View style={styles.header}>
@@ -271,4 +274,3 @@ const WeeklyMenuScreen = ({ navigation }: WeeklyMenuScreenProps) => {
 };
 
 export default WeeklyMenuScreen;
-

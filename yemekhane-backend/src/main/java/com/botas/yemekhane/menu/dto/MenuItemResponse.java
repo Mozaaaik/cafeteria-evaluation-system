@@ -25,7 +25,10 @@ public record MenuItemResponse(
         Long id,
         MenuCategory category,
         String name,
-        int displayOrder
+        int displayOrder,
+        double averageRating,
+        long totalVotes,
+        Integer userRating
 ) {
 
     /*
@@ -40,7 +43,16 @@ public record MenuItemResponse(
                 item.getId(),
                 item.getCategory(),
                 item.getName(),
-                item.getDisplayOrder()
+                item.getDisplayOrder(),
+                0.0,
+                0,
+                null
         );
+    }
+
+    public static MenuItemResponse withRatings(MenuItem item, double averageRating,
+                                               long totalVotes, Integer userRating) {
+        return new MenuItemResponse(item.getId(), item.getCategory(), item.getName(), item.getDisplayOrder(),
+                averageRating, totalVotes, userRating);
     }
 }

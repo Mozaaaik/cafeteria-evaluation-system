@@ -13,15 +13,20 @@ import {
   TouchableOpacity,
   View,
   Image,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { profileStyles as styles } from '../../styles/profileStyles';
+import { profileStyles } from '../../styles/profileStyles';
+import { apiService, handleAuthError } from '../../services/apiService';
+import { useTheme, useThemedStyles } from '../../theme/ThemeContext';
 
 type ProfileScreenProps = {
   navigation?: any;
 };
 
 const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(profileStyles);
   const [fullName, setFullName] = useState('Yükleniyor...');
   const [username, setUsername] = useState('Yükleniyor...');
   const [role, setRole] = useState('USER');
@@ -57,18 +62,10 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
     const loadUserData = async () => {
       setLoading(true);
       try {
-        const storedName = await AsyncStorage.getItem('userFullName');
-        const storedRole = await AsyncStorage.getItem('userRole');
-        
-        if (storedName) {
-          setFullName(capitalizeName(storedName));
-        }
-        if (storedRole) setRole(storedRole);
-        
-        const computedUsername = storedName 
-          ? storedName.toLowerCase().replace(/[^a-z0-9]/g, '') 
-          : 'botas_personel';
-        setUsername(computedUsername);
+        const profile = await apiService.getMyProfile();
+        setFullName(capitalizeName(profile.fullName));
+        setRole(profile.role);
+        setUsername(profile.username);
 
       } catch (e) {
         console.log('Error reading profile data:', e);
@@ -90,14 +87,14 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 
   // Şifre değiştirme formunu doğrular ve (şimdilik simüle edilmiş) güncelleme
   // isteğini gerçekleştirir
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Alert.alert('Hata', 'Lütfen tüm şifre alanlarını doldurun.');
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Hata', 'Yeni şifre en az 6 karakter olmalıdır.');
+    if (newPassword.length < 8) {
+      Alert.alert('Hata', 'Yeni şifre en az 8 karakter olmalıdır.');
       return;
     }
 
@@ -108,8 +105,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 
     setPasswordLoading(true);
 
-    // Sunucu ile iletişim simülasyonu
-    setTimeout(() => {
+    try {
+      await apiService.changePassword(oldPassword, newPassword);
       setPasswordLoading(false);
       Alert.alert('Başarılı', 'Şifreniz başarıyla güncellenmiştir.', [
         {
@@ -121,7 +118,11 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
           },
         },
       ]);
-    }, 1500);
+    } catch (err: any) {
+      setPasswordLoading(false);
+      if (await handleAuthError(err, navigation)) return;
+      Alert.alert('Hata', err.message || 'Şifre değiştirilemedi.');
+    }
   };
 
   // Kullanıcı çıkışı için onay diyaloğu gösterir; onaylanırsa hafızadaki
@@ -136,7 +137,11 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
           text: 'Evet, Çık',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.clear();
+            await Promise.all(
+              ['authToken', 'userRole', 'userFullName', 'keepLoggedIn'].map(key =>
+                AsyncStorage.removeItem(key),
+              ),
+            );
             if (navigation) {
               navigation.replace('Login');
             }
@@ -160,7 +165,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.overlay}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme.colors.statusBar} backgroundColor="transparent" translucent />
 
         {/* Üst Başlık Bölümü */}
         <View style={styles.header}>
@@ -204,6 +209,27 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
                   </View>
                 </View>
 
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Görünüm</Text>
+                  <View style={styles.themeRow}>
+                    <View style={styles.themeTextContainer}>
+                      <Text style={styles.themeTitle}>
+                        {theme.isDark ? 'Karanlık Mod' : 'Aydınlık Mod'}
+                      </Text>
+                      <Text style={styles.themeDescription}>
+                        Uygulamanın renk görünümünü değiştirir.
+                      </Text>
+                    </View>
+                    <Switch
+                      value={theme.isDark}
+                      onValueChange={() => theme.toggleTheme()}
+                      trackColor={{ false: '#CBD5E1', true: '#5EEAD4' }}
+                      thumbColor={theme.isDark ? '#0D9488' : '#FFFFFF'}
+                      accessibilityLabel="Karanlık modu aç veya kapat"
+                    />
+                  </View>
+                </View>
+
                 {/* Şifre Değiştirme Kartı */}
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Şifreyi Değiştir</Text>
@@ -215,7 +241,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
                       style={[styles.input, focusedField === 'old' && styles.inputFocused]}
                       secureTextEntry
                       placeholder="Mevcut şifrenizi girin"
-                      placeholderTextColor="#475569"
+                      placeholderTextColor={theme.colors.placeholder}
                       value={oldPassword}
                       onChangeText={setOldPassword}
                       onFocus={() => setFocusedField('old')}
@@ -229,8 +255,8 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
                     <TextInput
                       style={[styles.input, focusedField === 'new' && styles.inputFocused]}
                       secureTextEntry
-                      placeholder="Yeni şifre belirleyin (en az 6 hane)"
-                      placeholderTextColor="#475569"
+                      placeholder="Yeni şifre belirleyin (en az 8 karakter)"
+                      placeholderTextColor={theme.colors.placeholder}
                       value={newPassword}
                       onChangeText={setNewPassword}
                       onFocus={() => setFocusedField('new')}
@@ -245,7 +271,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
                       style={[styles.input, focusedField === 'confirm' && styles.inputFocused]}
                       secureTextEntry
                       placeholder="Yeni şifrenizi tekrar girin"
-                      placeholderTextColor="#475569"
+                      placeholderTextColor={theme.colors.placeholder}
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
                       onFocus={() => setFocusedField('confirm')}
@@ -281,8 +307,20 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
                 </View>
 
                 {/* Güvenli Çıkış Yap Butonu */}
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-                  <Text style={styles.logoutButtonText}>Güvenli Çıkış Yap</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.logoutButton,
+                    theme.isDark ? styles.logoutButtonDark : styles.logoutButtonLight,
+                  ]}
+                  onPress={handleLogout}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.logoutButtonText,
+                    theme.isDark ? styles.logoutButtonTextDark : styles.logoutButtonTextLight,
+                  ]}>
+                    Güvenli Çıkış Yap
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
@@ -294,5 +332,3 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 };
 
 export default ProfileScreen;
-
-

@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService, handleAuthError } from '../../services/apiService';
-import { homeStyles as styles } from '../../styles/homeStyles';
+import { homeStyles } from '../../styles/homeStyles';
+import { useTheme, useThemedStyles } from '../../theme/ThemeContext';
 
 type MenuItem = {
   id: number;
@@ -32,12 +33,16 @@ type HomeScreenProps = {
 };
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(homeStyles);
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState('BOTAŞ Personeli');
   const [submitting, setSubmitting] = useState(false);
   
   // Bugünün gerçek menü verileri
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuId, setMenuId] = useState<number | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
 
   // Her yemek için verilen puanları tutan state: { [yemekId]: puan }
   const [ratings, setRatings] = useState<{ [key: number]: number }>({});
@@ -50,7 +55,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     try {
       const data = await apiService.getTodayMenu();
       if (data && data.items) {
+        setMenuId(data.id);
         setMenuItems(data.items);
+        setHasVoted(data.items.some((item: any) => item.userRating !== null && item.userRating !== undefined));
 
         // Kullanıcının varsa veritabanındaki eski puanlarını forma önceden doldur
         const initialRatings: { [key: number]: number } = {};
@@ -89,6 +96,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   // Kullanıcı bir yemeğe yıldız ile puan verdiğinde ilgili puanı state'e kaydeder
   const handleRatingSelect = (itemId: number, score: number) => {
+    if (hasVoted) return;
     setRatings(prev => ({
       ...prev,
       [itemId]: score,
@@ -98,6 +106,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   // "Değerlendirmeyi Gönder" butonuna basıldığında çalışır: verilen tüm
   // puanları backend'e gönderir ve menüyü güncel ortalamalarla yeniden çeker
   const handleSubmitEvaluations = async () => {
+    if (hasVoted) {
+      Alert.alert('Bilgi', 'Bu menü için daha önce oy kullandınız.');
+      return;
+    }
     // Validate that at least one item was rated
     const ratedCount = Object.keys(ratings).length;
     if (ratedCount === 0) {
@@ -107,13 +119,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
     setSubmitting(true);
     try {
-      // Verilen puanları döngüyle API servislerine gönder
-      const promises = Object.entries(ratings).map(([itemIdStr, score]) => {
-        const itemId = parseInt(itemIdStr, 10);
-        return apiService.submitEvaluation(itemId, score, comment || '');
-      });
-
-      await Promise.all(promises);
+      if (menuId === null) throw new Error('Menü bilgisi bulunamadı.');
+      await apiService.submitEvaluation(menuId, Object.entries(ratings).map(([itemId, score]) => ({
+        menuItemId: Number(itemId), score,
+      })), comment || '');
 
       Alert.alert(
         'Teşekkür Ederiz',
@@ -150,6 +159,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         <TouchableOpacity
           key={i}
           onPress={() => handleRatingSelect(itemId, i)}
+          disabled={hasVoted}
           style={styles.starButton}
           activeOpacity={0.7}
         >
@@ -223,7 +233,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       imageStyle={{ objectPosition: 'left' } as any}
     >
       <SafeAreaView style={styles.overlay}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme.colors.statusBar} backgroundColor="transparent" translucent />
         
         
         {/* Karşılama ve Profil Başlığı Bölümü */}
@@ -275,7 +285,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   <Text style={styles.weeklyButtonText}>Haftalık Menü 📅</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.menuSubtitleText}>Yemekleri değerlendirmek için yıldızlara dokunun</Text>
+              <Text style={styles.menuSubtitleText}>
+                {hasVoted ? 'Bu menü için değerlendirmeniz alınmıştır.' : 'Yemekleri değerlendirmek için yıldızlara dokunun'}
+              </Text>
             </View>
 
             {/* Yemek Listesi ve Oylama Kartları */}
@@ -313,24 +325,27 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               <TextInput
                 style={styles.commentInput}
                 placeholder="Yemek kalitesi, porsiyon, sıcaklık veya servis hakkındaki düşüncelerinizi yazın..."
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.placeholder}
                 value={comment}
                 onChangeText={setComment}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                editable={!hasVoted}
               />
 
               <TouchableOpacity
-                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                style={[styles.submitButton, (submitting || hasVoted) && styles.submitButtonDisabled]}
                 onPress={handleSubmitEvaluations}
-                disabled={submitting}
+                disabled={submitting || hasVoted}
                 activeOpacity={0.85}
               >
                 {submitting ? (
                   <ActivityIndicator color="#ffffff" />
                 ) : (
-                  <Text style={styles.submitButtonText}>Değerlendirmeyi Gönder</Text>
+                  <Text style={styles.submitButtonText}>
+                    {hasVoted ? 'Değerlendirme Gönderildi' : 'Değerlendirmeyi Gönder'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -342,4 +357,3 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 };
 
 export default HomeScreen;
-

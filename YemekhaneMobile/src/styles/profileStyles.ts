@@ -171,6 +171,30 @@ export const profileStyles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  themeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  themeTextContainer: {
+    flex: 1,
+    paddingRight: 16,
+  },
+
+  themeTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+
+  themeDescription: {
+    color: '#94A3B8',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
   inputContainer: {
     marginBottom: 16,
   },
@@ -253,11 +277,31 @@ export const profileStyles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 3,
+    overflow: 'hidden',
   },
 
   logoutButtonText: {
     color: '#EF4444',
     fontWeight: 'bold',
     fontSize: 15,
+    width: '100%',
+    textAlign: 'center',
+    backgroundColor: 'transparent',
+  },
+
+  logoutButtonLight: {
+    backgroundColor: '#FEE2E2',
+  },
+
+  logoutButtonTextLight: {
+    backgroundColor: '#FEE2E2',
+  },
+
+  logoutButtonDark: {
+    backgroundColor: '#3F303E',
+  },
+
+  logoutButtonTextDark: {
+    backgroundColor: '#3F303E',
   },
 });

@@ -11,7 +11,10 @@ import com.botas.yemekhane.menu.domain.MenuCategory;
 import com.botas.yemekhane.menu.domain.MenuItem;
 import com.botas.yemekhane.menu.dto.CreateMenuRequest;
 import com.botas.yemekhane.menu.dto.MenuResponse;
+import com.botas.yemekhane.menu.dto.UpdateMenuRequest;
+import com.botas.yemekhane.menu.dto.WeeklyMenuDayResponse;
 import com.botas.yemekhane.menu.exception.MenuDateAlreadyExistsException;
+import com.botas.yemekhane.menu.exception.MenuNotFoundException;
 import com.botas.yemekhane.menu.repository.DailyMenuRepository;
 import com.botas.yemekhane.user.domain.User;
 import com.botas.yemekhane.user.service.UserService;
@@ -192,6 +195,45 @@ public class MenuService {
                 .stream()
                 .map(MenuResponse::fromDailyMenu)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MenuResponse getMenu(Long menuId) {
+        return dailyMenuRepository.findById(menuId).map(MenuResponse::fromDailyMenu)
+                .orElseThrow(() -> new MenuNotFoundException(menuId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<WeeklyMenuDayResponse> getWeek(LocalDate weekStart) {
+        if (weekStart.getDayOfWeek() != java.time.DayOfWeek.MONDAY) {
+            throw new IllegalArgumentException("weekStart pazartesi olmalıdır.");
+        }
+        LocalDate weekEnd = weekStart.plusDays(4);
+        java.util.Map<LocalDate, MenuResponse> menus = getMenusBetween(weekStart, weekEnd).stream()
+                .collect(java.util.stream.Collectors.toMap(MenuResponse::menuDate, value -> value));
+        return java.util.stream.IntStream.range(0, 5)
+                .mapToObj(day -> { LocalDate date = weekStart.plusDays(day); return new WeeklyMenuDayResponse(date, menus.get(date)); })
+                .toList();
+    }
+
+    @Transactional
+    public MenuResponse updateMenu(Long menuId, UpdateMenuRequest request) {
+        DailyMenu menu = dailyMenuRepository.findById(menuId).orElseThrow(() -> new MenuNotFoundException(menuId));
+        if (dailyMenuRepository.existsByMenuDateAndIdNot(request.menuDate(), menuId)) {
+            throw new MenuDateAlreadyExistsException(request.menuDate());
+        }
+        menu.updateMenuDate(request.menuDate());
+        menu.updateItemName(MenuCategory.SOUP, normalizeName(request.soup()));
+        menu.updateItemName(MenuCategory.MAIN_COURSE, normalizeName(request.mainCourse()));
+        menu.updateItemName(MenuCategory.SIDE_DISH, normalizeName(request.sideDish()));
+        menu.updateItemName(MenuCategory.DESSERT_OR_FRUIT, normalizeName(request.dessertOrFruit()));
+        return MenuResponse.fromDailyMenu(dailyMenuRepository.save(menu));
+    }
+
+    @Transactional
+    public void deleteMenu(Long menuId) {
+        DailyMenu menu = dailyMenuRepository.findById(menuId).orElseThrow(() -> new MenuNotFoundException(menuId));
+        dailyMenuRepository.delete(menu);
     }
 }
 

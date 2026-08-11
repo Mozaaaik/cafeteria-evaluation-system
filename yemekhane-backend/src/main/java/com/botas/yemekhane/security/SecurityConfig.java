@@ -29,6 +29,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.MediaType;
+import com.botas.yemekhane.common.exception.ApiErrorResponse;
+import tools.jackson.databind.ObjectMapper;
+import java.io.IOException;
 
 @Configuration
 public class SecurityConfig {
@@ -39,7 +43,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
-        JwtAuthenticationConverter jwtAuthenticationConverter
+        JwtAuthenticationConverter jwtAuthenticationConverter,
+        ObjectMapper objectMapper
     ) throws Exception {
 
         http
@@ -48,6 +53,7 @@ public class SecurityConfig {
              * oturum kullanmayacağımız için CSRF kapatılır.
              */
             .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> {})
 
             /*
             * Backend kullanıcı oturumunu bellekte saklamaz.
@@ -64,7 +70,9 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/health", 
                     "/api/auth/login",
-                    "/api/auth/register"
+                    "/api/auth/register",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
                 )
                 .permitAll() // Bu adreslere herkes erişebilir.
                 /*
@@ -126,10 +134,22 @@ public class SecurityConfig {
                             jwtAuthenticationConverter
                     )
                 )
-            );
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, exception) -> writeSecurityError(
+                        response, objectMapper, 401, "Unauthorized", "Kimlik doğrulaması gereklidir.", request.getRequestURI()))
+                .accessDeniedHandler((request, response, exception) -> writeSecurityError(
+                        response, objectMapper, 403, "Forbidden", "Bu işlem için yetkiniz yok.", request.getRequestURI())));
 
 
         return http.build();
+    }
+
+    private static void writeSecurityError(jakarta.servlet.http.HttpServletResponse response, ObjectMapper mapper,
+                                           int status, String error, String message, String path) throws IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        mapper.writeValue(response.getOutputStream(), ApiErrorResponse.of(status, error, message, path));
     }
 
     /**

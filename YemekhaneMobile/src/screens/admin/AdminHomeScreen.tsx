@@ -17,7 +17,8 @@ import {
   Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { adminStyles as styles } from '../../styles/adminStyles';
+import { adminStyles } from '../../styles/adminStyles';
+import { useTheme, useThemedStyles } from '../../theme/ThemeContext';
 
 type AdminHomeScreenProps = {
   navigation?: any;
@@ -39,6 +40,8 @@ const CATEGORY_ORDER: { [key: string]: number } = {
 const getCategoryOrder = (cat: string) => CATEGORY_ORDER[cat] || 99;
 
 const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(adminStyles);
   const [activeTab, setActiveTab] = useState<'editor' | 'reports' | 'feedbacks'>('editor');
   const [loading, setLoading] = useState(false);
 
@@ -48,6 +51,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
   const [mainDish, setMainDish] = useState('');
   const [sideDish, setSideDish] = useState('');
   const [dessert, setDessert] = useState('');
+  const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
   // Form Odaklanma (Focus) State'i
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -68,6 +72,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
       try {
         const existingMenu = await apiService.getMenuByDate(menuDate);
         if (existingMenu && existingMenu.items) {
+          setSelectedMenuId(existingMenu.id);
           // Önce alanları temizle, sonra doldur
           setSoup('');
           setMainDish('');
@@ -88,6 +93,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
         setMainDish('');
         setSideDish('');
         setDessert('');
+        setSelectedMenuId(null);
         console.log('No existing menu for date:', menuDate);
       }
     };
@@ -102,12 +108,13 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
       if (activeTab !== 'reports') return;
       setReportsLoading(true);
       try {
-        const data = await apiService.getReports();
+        if (selectedMenuId === null) { setReports([]); return; }
+        const data = await apiService.getReports(selectedMenuId);
         const mappedReports = data.map((item: any) => ({
           id: item.menuItemId,
-          name: item.itemName,
+          name: item.mealName,
           category: item.category,
-          avgRating: item.averageRating,
+          avgRating: item.averageStars,
           totalVotes: item.totalVotes,
           date: item.menuDate,
         }));
@@ -121,7 +128,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     };
 
     fetchReports();
-  }, [activeTab, navigation]);
+  }, [activeTab, navigation, selectedMenuId]);
 
   // 3. "Yorumlar" sekmesi seçildiğinde personelin yazdığı genel
   //    değerlendirme/yorumları backend'den çeker
@@ -130,8 +137,21 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
       if (activeTab !== 'feedbacks') return;
       setFeedbacksLoading(true);
       try {
-        const data = await apiService.getCommentReports();
-        setFeedbacks(data);
+        if (selectedMenuId === null) { setFeedbacks([]); return; }
+        const data = await apiService.getCommentReports(selectedMenuId);
+        setFeedbacks(data.map((evaluation: any, index: number) => ({
+          id: `${selectedMenuId}-${index}`,
+          userName: evaluation.personnelName,
+          date: menuDate,
+          averageScore: evaluation.averageScore,
+          comment: evaluation.generalComment,
+          items: (evaluation.ratings || []).map((rating: any) => ({
+            id: rating.menuItemId,
+            name: rating.mealName,
+            score: rating.score,
+            category: rating.category || '',
+          })),
+        })));
       } catch (err) {
         if (await handleAuthError(err, navigation)) return;
         console.log('Error loading feedbacks:', err);
@@ -141,7 +161,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     };
 
     fetchFeedbacks();
-  }, [activeTab, navigation]);
+  }, [activeTab, menuDate, navigation, selectedMenuId]);
 
   // Yönetici çıkışı için onay diyaloğu gösterir; onaylanırsa hafızadaki
   // tüm oturum verilerini temizleyip giriş ekranına yönlendirir
@@ -155,7 +175,11 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
           text: 'Evet, Çık',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.clear();
+            await Promise.all(
+              ['authToken', 'userRole', 'userFullName', 'keepLoggedIn'].map(key =>
+                AsyncStorage.removeItem(key),
+              ),
+            );
             if (navigation) {
               navigation.replace('Login');
             }
@@ -181,13 +205,17 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
        * aşağıdaki beş alanı bekliyor. Alan adlarının Java DTO'sundaki adlarla
        * birebir aynı olması Spring'in JSON'u doğru nesneye çevirmesini sağlar.
        */
-      const savedMenu = await apiService.saveMenu({
+      const request = {
         menuDate: menuDate.trim(),
         soup: soup.trim(),
         mainCourse: mainDish.trim(),
         sideDish: sideDish.trim(),
         dessertOrFruit: dessert.trim(),
-      });
+      };
+      const savedMenu = selectedMenuId === null
+        ? await apiService.saveMenu(request)
+        : await apiService.updateMenu(selectedMenuId, request);
+      setSelectedMenuId(savedMenu.id);
 
       // Backend HTTP 201 ile kaydettiği menüyü geri döndürür. Buradaki id,
       // kaydın gerçekten veritabanında oluştuğunu gösteren DailyMenu id'sidir.
@@ -220,10 +248,12 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
       case 'SOUP':
       case 'Çorba': return '#38BDF8';
       case 'MAIN_DISH':
+      case 'MAIN_COURSE':
       case 'Ana Yemek': return '#F59E0B';
       case 'SIDE_DISH':
       case 'Yardımcı Yemek': return '#10B981';
       case 'DESSERT':
+      case 'DESSERT_OR_FRUIT':
       case 'Tatlı/Meyve': return '#EC4899';
       default: return '#94A3B8';
     }
@@ -235,9 +265,11 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
     switch (category) {
       case 'SOUP': return 'Çorba';
       case 'MAIN_DISH': return 'Ana Yemek';
+      case 'MAIN_COURSE': return 'Ana Yemek';
       case 'SIDE_DISH': return 'Yardımcı Yemek';
       case 'DESSERT': return 'Tatlı/Meyve';
-      default: return category;
+      case 'DESSERT_OR_FRUIT': return 'Tatlı/Meyve';
+      default: return 'Kategori';
     }
   };
 
@@ -266,7 +298,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
       imageStyle={{ objectPosition: 'left' } as any}
     >
       <SafeAreaView style={styles.overlay}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme.colors.statusBar} backgroundColor="transparent" translucent />
 
         {/* Üst Başlık Bölümü */}
         <View style={styles.header}>
@@ -318,6 +350,44 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
         >
           {activeTab === 'editor' ? (
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.themeCard}>
+                <View style={styles.themeCardHeader}>
+                  <View>
+                    <Text style={styles.themeCardTitle}>Görünüm</Text>
+                    <Text style={styles.themeCardSubtitle}>Panel temasını seçin</Text>
+                  </View>
+                  <Text style={styles.themeCardIcon}>{theme.isDark ? '🌙' : '☀️'}</Text>
+                </View>
+
+                <View style={styles.themeOptions}>
+                  <TouchableOpacity
+                    style={[styles.themeOption, !theme.isDark && styles.themeOptionActive]}
+                    onPress={() => theme.setMode('light')}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: !theme.isDark }}
+                  >
+                    <Text style={styles.themeOptionIcon}>☀️</Text>
+                    <Text style={[styles.themeOptionText, !theme.isDark && styles.themeOptionTextActive]}>
+                      Aydınlık
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.themeOption, theme.isDark && styles.themeOptionActive]}
+                    onPress={() => theme.setMode('dark')}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: theme.isDark }}
+                  >
+                    <Text style={styles.themeOptionIcon}>🌙</Text>
+                    <Text style={[styles.themeOptionText, theme.isDark && styles.themeOptionTextActive]}>
+                      Karanlık
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Günün Menüsünü Belirleyin</Text>
                 
@@ -327,7 +397,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
                   <TextInput
                     style={[styles.input, focusedField === 'date' && styles.inputFocused]}
                     placeholder="Tarih seçin veya yazın"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={theme.colors.placeholder}
                     value={menuDate}
                     onChangeText={setMenuDate}
                     onFocus={() => setFocusedField('date')}
@@ -341,7 +411,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
                   <TextInput
                     style={[styles.input, focusedField === 'soup' && styles.inputFocused]}
                     placeholder="Çorba adını girin"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={theme.colors.placeholder}
                     value={soup}
                     onChangeText={setSoup}
                     onFocus={() => setFocusedField('soup')}
@@ -355,7 +425,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
                   <TextInput
                     style={[styles.input, focusedField === 'main' && styles.inputFocused]}
                     placeholder="Ana yemek adını girin"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={theme.colors.placeholder}
                     value={mainDish}
                     onChangeText={setMainDish}
                     onFocus={() => setFocusedField('main')}
@@ -369,7 +439,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
                   <TextInput
                     style={[styles.input, focusedField === 'side' && styles.inputFocused]}
                     placeholder="Yardımcı yemek adını girin"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={theme.colors.placeholder}
                     value={sideDish}
                     onChangeText={setSideDish}
                     onFocus={() => setFocusedField('side')}
@@ -383,7 +453,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
                   <TextInput
                     style={[styles.input, focusedField === 'dessert' && styles.inputFocused]}
                     placeholder="Tatlı veya meyve adını girin"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor={theme.colors.placeholder}
                     value={dessert}
                     onChangeText={setDessert}
                     onFocus={() => setFocusedField('dessert')}
@@ -462,7 +532,7 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
             /* Yorumlar Listesi Görünümü */
             <FlatList
               data={feedbacks}
-              keyExtractor={item => item.id.toString()}
+              keyExtractor={(item, index) => item.id?.toString() || `${item.userName || 'personel'}-${index}`}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
@@ -545,4 +615,3 @@ const AdminHomeScreen = ({ navigation }: AdminHomeScreenProps) => {
 };
 
 export default AdminHomeScreen;
-

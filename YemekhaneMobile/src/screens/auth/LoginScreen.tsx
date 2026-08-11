@@ -13,7 +13,8 @@ import {
   ImageBackground,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loginStyles as styles } from '../../styles/loginStyles';
+import { loginStyles } from '../../styles/loginStyles';
+import { useTheme, useThemedStyles } from '../../theme/ThemeContext';
 import { apiService } from '../../services/apiService';
 
 type LoginScreenProps = {
@@ -33,6 +34,8 @@ type LoginResponse = {
 };
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(loginStyles);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -95,16 +98,19 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       await AsyncStorage.setItem('keepLoggedIn', rememberMe ? 'true' : 'false');
 
       if (navigation) {
-        if (data.user.role === 'ADMIN') {
+        const role = String(data?.user?.role || '').toUpperCase();
+        if (role.includes('ADMIN')) {
           navigation.replace('AdminHome');
         } else {
           navigation.replace('UserHome');
         }
       } else {
-        console.log('Logged in successfully (no navigation prop):', data.user.role);
+        console.log('Logged in successfully:', data?.user?.role);
       }
-    } catch {
-      setErrorMessage('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
+    } catch (error: any) {
+      console.log('[LoginScreen Catch]', error);
+      const rawMsg = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      setErrorMessage(rawMsg);
     } finally {
       setLoading(false);
     }
@@ -118,7 +124,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       imageStyle={{ objectPosition: 'left' } as any}
     >
       <SafeAreaView style={styles.overlay}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme.colors.statusBar} backgroundColor="transparent" translucent />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.flex}
@@ -145,7 +151,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
                   isUsernameFocused && styles.inputFocused,
                 ]}
                 placeholder="Kullanıcı adınızı girin"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.placeholder}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -164,7 +170,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
                   isPasswordFocused && styles.inputFocused,
                 ]}
                 placeholder="Şifrenizi girin"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.placeholder}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -223,5 +229,4 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 };
 
 export default LoginScreen;
-
 

@@ -3,10 +3,10 @@ import axios, { AxiosError } from 'axios';
 
 /*
  * Android emülatöründeki 127.0.0.1 emülatörün kendisini gösterir.
- * Bilgisayarda 8080 portunda çalışan Spring Boot backend'e Android
+ * Bilgisayarda 8082 portunda çalışan Spring Boot backend'e Android
  * emülatöründen ulaşmak için özel 10.0.2.2 adresini kullanıyoruz.
  */
-export const API_BASE_URL = 'http://10.0.2.2:8080';
+export const API_BASE_URL = 'http://10.0.2.2:8082';
 
 /*
  * Axios instance oluşturuyoruz.
@@ -79,12 +79,17 @@ const getErrorMessage = (error: AxiosError<any>, fallback: string): string => {
 /* Axios hatasını uygulamanın ortak ApiError tipine dönüştürür. */
 const toApiError = (error: unknown, fallback: string): ApiError => {
   if (axios.isAxiosError(error)) {
-    // Backend'e ulaşılamadıysa HTTP response olmadığı için status 0 kullanılır.
-    const status = error.response?.status ?? 0;
-    return new ApiError(status, getErrorMessage(error, fallback));
+    if (!error.response) {
+      const codeInfo = error.code ? ` [Code: ${error.code}]` : '';
+      return new ApiError(0, `[Network Error] ${error.message}${codeInfo}`);
+    }
+    const status = error.response.status;
+    const msg = getErrorMessage(error, fallback);
+    return new ApiError(status, `[HTTP ${status}] ${msg}`);
   }
 
-  return new ApiError(0, fallback);
+  const genericMsg = error instanceof Error ? error.message : fallback;
+  return new ApiError(0, genericMsg);
 };
 
 /*
@@ -149,6 +154,9 @@ export type MenuResponse = {
   items: MenuItemResponse[];
 };
 
+export type WeeklyMenuDayResponse = { date: string; menu: MenuResponse | null };
+export type UserProfileResponse = { id: number; fullName: string; username: string; role: 'ADMIN' | 'USER' };
+
 export const apiService = {
   /*
    * POST /api/auth/login
@@ -158,24 +166,61 @@ export const apiService = {
    */
   login: async (username: string, password: string): Promise<LoginResponse> => {
     try {
+      console.log(`[LOGIN TRY] POST -> ${apiClient.defaults.baseURL}/api/auth/login with username: "${username}"`);
       const response = await apiClient.post<LoginResponse>('/api/auth/login', {
         username,
         password,
       });
 
-      // Axios'ta backend'in JSON cevabı response.data içerisindedir.
-      const data = response.data;
-      // console.log(
-      //   'Backend cevabı:\n',
-      //   JSON.stringify(data, null, 2)
-      // );
+      let data: any = response.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          // data stays string if fail
+        }
+      }
 
-      await AsyncStorage.setItem('authToken', data.accessToken);
-      await AsyncStorage.setItem('userRole', data.user.role);
-      await AsyncStorage.setItem('userFullName', data.user.fullName);
+      console.log('[LOGIN SUCCESS DATA]', JSON.stringify(data));
 
-      return data;
-    } catch (error) {
+      const accessToken = data.accessToken || data.token || '';
+      const userObj = data.user || data;
+
+      // Rol tespiti:
+      // 1. data.user.role veya data.role (örn: 'ADMIN', 'ROLE_ADMIN')
+      // 2. username 'admin' ise
+      // 3. accessToken içerisinde 'ADMIN' geçiyorsa
+      let role: 'ADMIN' | 'USER' = 'USER';
+      const rawRole = String(userObj?.role || data?.role || '').toUpperCase();
+      if (rawRole.includes('ADMIN') || username.trim().toLowerCase() === 'admin' || accessToken.includes('ADMIN')) {
+        role = 'ADMIN';
+      }
+
+      const fullName = userObj.fullName || (role === 'ADMIN' ? 'Sistem Yöneticisi' : username);
+
+      await AsyncStorage.setItem('authToken', accessToken);
+      await AsyncStorage.setItem('userRole', role);
+      await AsyncStorage.setItem('userFullName', fullName);
+
+      return {
+        accessToken,
+        tokenType: data.tokenType || 'Bearer',
+        expiresIn: data.expiresIn || 3600,
+        user: {
+          id: userObj.id || 1,
+          fullName,
+          username: userObj.username || username,
+          role,
+        },
+      };
+    } catch (error: any) {
+      console.log('[LOGIN ERROR DETAILS]:', {
+        isAxiosError: axios.isAxiosError(error),
+        message: error?.message,
+        code: error?.code,
+        status: error?.response?.status,
+        responseData: error?.response?.data,
+      });
       throw toApiError(error, 'Giriş başarısız.');
     }
   },
@@ -185,16 +230,15 @@ export const apiService = {
     fullName: string,
     username: string,
     password: string,
-  ): Promise<string> => {
+  ): Promise<void> => {
     try {
-      const response = await apiClient.post<string>('/api/auth/register', {
+      await apiClient.post('/api/auth/register', {
         // Alan adı backend'deki RegisterRequest.fullName ile aynı olmalıdır.
         fullName,
         username,
         password,
       });
 
-      return response.data;
     } catch (error) {
       throw toApiError(error, 'Kayıt işlemi başarısız.');
     }
@@ -250,6 +294,16 @@ export const apiService = {
     }
   },
 
+  updateMenu: async (menuId: number, menu: CreateMenuRequest): Promise<MenuResponse> => {
+    try { return (await apiClient.put<MenuResponse>(`/api/admin/menus/${menuId}`, menu)).data; }
+    catch (error) { throw toApiError(error, 'Menü güncellenemedi.'); }
+  },
+
+  deleteMenu: async (menuId: number): Promise<void> => {
+    try { await apiClient.delete(`/api/admin/menus/${menuId}`); }
+    catch (error) { throw toApiError(error, 'Menü silinemedi.'); }
+  },
+
 
 
   /*
@@ -275,7 +329,7 @@ export const apiService = {
     }
   },
 
-  getMenusByRange: async (startDate: string, endDate: string): Promise<any[]> => {
+  getMenusByRange: async (startDate: string, endDate: string): Promise<MenuResponse[]> => {
     try {
       const response = await apiClient.get<MenuResponse[]>('/api/menus', {
         params: { startDate, endDate },
@@ -286,12 +340,11 @@ export const apiService = {
     }
   },
 
-  submitEvaluation: async (menuItemId: number, score: number, comment?: string) => {
+  submitEvaluation: async (menuId: number, ratings: Array<{menuItemId: number; score: number}>, generalComment?: string) => {
     try {
-      const response = await apiClient.post('/api/evaluations', {
-        menuItemId,
-        score,
-        comment,
+      const response = await apiClient.put(`/api/evaluations/menus/${menuId}`, {
+        ratings,
+        generalComment,
       });
       return response.data;
     } catch (error) {
@@ -299,18 +352,28 @@ export const apiService = {
     }
   },
 
-  getReports: async (): Promise<any[]> => {
+  getMyProfile: async (): Promise<UserProfileResponse> => {
+    try { return (await apiClient.get<UserProfileResponse>('/api/users/me')).data; }
+    catch (error) { throw toApiError(error, 'Profil yüklenemedi.'); }
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    try { await apiClient.patch('/api/users/me/password', {currentPassword, newPassword}); }
+    catch (error) { throw toApiError(error, 'Şifre değiştirilemedi.'); }
+  },
+
+  getReports: async (menuId: number): Promise<any[]> => {
     try {
-      const response = await apiClient.get<any[]>('/api/reports/menu-items');
-      return response.data;
+      const response = await apiClient.get<{meals: any[]}>(`/api/admin/reports/menus/${menuId}/summary`);
+      return response.data.meals;
     } catch (error) {
       throw toApiError(error, 'Raporlar yüklenemedi.');
     }
   },
 
-  getCommentReports: async (): Promise<any[]> => {
+  getCommentReports: async (menuId: number): Promise<any[]> => {
     try {
-      const response = await apiClient.get<any[]>('/api/reports/comments');
+      const response = await apiClient.get<any[]>(`/api/admin/reports/menus/${menuId}/comments`);
       return response.data;
     } catch (error) {
       throw toApiError(error, 'Yorumlar yüklenemedi.');

@@ -29,6 +29,10 @@ public record MenuResponse(
         List<MenuItemResponse> items
 ) {
 
+    public static MenuResponse of(DailyMenu menu, List<MenuItemResponse> items) {
+        return new MenuResponse(menu.getId(), menu.getMenuDate(), items);
+    }
+
     /*
      * Veritabanından gelen DailyMenu entity nesnesini MenuResponse DTO'suna
      * dönüştüren metottur.

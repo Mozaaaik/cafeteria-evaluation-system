@@ -142,4 +142,8 @@ public class MenuItem {
     void attachTo(DailyMenu menu) {
         this.menu = menu;
     }
+
+    void updateName(String name) {
+        this.name = name;
+    }
 }

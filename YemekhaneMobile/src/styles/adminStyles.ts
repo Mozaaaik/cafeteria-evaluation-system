@@ -100,6 +100,83 @@ export const adminStyles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  themeCard: {
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.6)',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  themeCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+
+  themeCardTitle: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+
+  themeCardSubtitle: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+
+  themeCardIcon: {
+    fontSize: 22,
+  },
+
+  themeOptions: {
+    flexDirection: 'row',
+    backgroundColor: '#0F172A',
+    borderRadius: 13,
+    padding: 4,
+  },
+
+  themeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 42,
+    borderRadius: 10,
+  },
+
+  themeOptionActive: {
+    backgroundColor: '#0D9488',
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.28,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+
+  themeOptionIcon: {
+    fontSize: 15,
+    marginRight: 7,
+  },
+
+  themeOptionText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  themeOptionTextActive: {
+    color: '#FFFFFF',
+  },
+
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
@@ -207,8 +284,10 @@ export const adminStyles = StyleSheet.create({
 
   categoryBadge: {
     borderRadius: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    minWidth: 92,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignItems: 'center',
   },
 
   categoryBadgeText: {

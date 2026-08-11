@@ -36,6 +36,7 @@ public interface DailyMenuRepository
      * kontrol eder. Menü varsa 'true', yoksa 'false' döner.
      */
     boolean existsByMenuDate(LocalDate menuDate);
+    boolean existsByMenuDateAndIdNot(LocalDate menuDate, Long id);
 
     /*
      * TARİHE GÖRE MENÜ GETİRME

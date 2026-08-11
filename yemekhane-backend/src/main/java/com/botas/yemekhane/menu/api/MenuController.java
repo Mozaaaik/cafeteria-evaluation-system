@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.botas.yemekhane.menu.dto.MenuResponse;
+import com.botas.yemekhane.menu.dto.WeeklyMenuDayResponse;
 import com.botas.yemekhane.menu.service.MenuService;
+import com.botas.yemekhane.evaluation.service.EvaluationService;
+import org.springframework.security.core.Authentication;
 
 /*
  * PERSONEL VE ADMIN İÇİN MENÜ OKUMA ENDPOINT'LERİ
@@ -29,10 +32,12 @@ import com.botas.yemekhane.menu.service.MenuService;
 public class MenuController {
 
     private final MenuService menuService;
+    private final EvaluationService evaluationService;
 
     /* Spring, MenuService nesnesini constructor injection ile verir. */
-    public MenuController(MenuService menuService) {
+    public MenuController(MenuService menuService, EvaluationService evaluationService) {
         this.menuService = menuService;
+        this.evaluationService = evaluationService;
     }
 
     /*
@@ -44,12 +49,11 @@ public class MenuController {
      * 4. Menü yoksa HTTP 404 döndürür.
      */
     @GetMapping("/today")
-    public ResponseEntity<MenuResponse> getTodayMenu() {
+    public ResponseEntity<MenuResponse> getTodayMenu(Authentication authentication) {
         LocalDate today = LocalDate.now();
 
-        return menuService
-                .getMenuByDate(today)
-                .map(ResponseEntity::ok)
+        return menuService.getMenuByDate(today)
+                .map(menu -> ResponseEntity.ok(evaluationService.menuWithRatings(menu.id(), authentication.getName())))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -95,5 +99,23 @@ public class MenuController {
         );
 
         return ResponseEntity.ok(menus);
+    }
+
+    @GetMapping("/week")
+    public ResponseEntity<List<WeeklyMenuDayResponse>> getWeek(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart
+    ) {
+        return ResponseEntity.ok(menuService.getWeek(weekStart));
+    }
+
+    @GetMapping("/{menuId}")
+    public ResponseEntity<MenuResponse> getMenu(
+            @PathVariable Long menuId,
+            Authentication authentication
+    ) {
+        if (authentication != null) {
+            return ResponseEntity.ok(evaluationService.menuWithRatings(menuId, authentication.getName()));
+        }
+        return ResponseEntity.ok(menuService.getMenu(menuId));
     }
 }

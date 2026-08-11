@@ -152,4 +152,19 @@ public class DailyMenu {
         items.add(item);        // Adım 1: Menü -> Yemeği kendi listesine koyar
         item.attachTo(this);    // Adım 2: Yemek -> Hangi menüye ait olduğunu kaydeder
     }
+
+    public void updateMenuDate(LocalDate menuDate) {
+        this.menuDate = menuDate;
+    }
+
+    public void replaceItems(List<MenuItem> newItems) {
+        items.clear();
+        newItems.forEach(this::addItem);
+    }
+
+    public void updateItemName(MenuCategory category, String name) {
+        items.stream().filter(item -> item.getCategory() == category).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Menü kategorisi bulunamadı: " + category))
+                .updateName(name);
+    }
 }

@@ -13,16 +13,17 @@ import {
   ImageBackground,
   Alert,
 } from 'react-native';
-import { registerStyles as styles } from '../../styles/registerStyles';
-
-// TODO: Backend ekibiyle netleşince gerçek adresi buraya yaz.
-const API_BASE_URL = 'http://10.0.2.2:8080';
+import { registerStyles } from '../../styles/registerStyles';
+import { useTheme, useThemedStyles } from '../../theme/ThemeContext';
+import { apiService } from '../../services/apiService';
 
 type RegisterScreenProps = {
   navigation?: any;
 };
 
 const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(registerStyles);
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -42,8 +43,8 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
       setErrorMessage('Tüm alanları doldurmanız gerekmektedir.');
       return false;
     }
-    if (password.length < 6) {
-      setErrorMessage('Şifre en az 6 karakter olmalıdır.');
+    if (password.length < 8) {
+      setErrorMessage('Şifre en az 8 karakter olmalıdır.');
       return false;
     }
     if (password !== confirmPassword) {
@@ -65,20 +66,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fullName, username, password }),
-      });
-
-      const responseText = await response.text();
-
-      if (!response.ok) {
-        setErrorMessage(responseText || 'Kayıt işlemi başarısız.');
-        return;
-      }
+      await apiService.register(fullName.trim(), username.trim(), password);
 
       Alert.alert(
         'Başarılı',
@@ -96,8 +84,12 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
           },
         ]
       );
-    } catch {
-      setErrorMessage('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Kayıt işlemi başarısız. Lütfen tekrar deneyin.',
+      );
     } finally {
       setLoading(false);
     }
@@ -111,7 +103,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
       imageStyle={{ objectPosition: 'left' } as any}
     >
       <SafeAreaView style={styles.overlay}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme.colors.statusBar} backgroundColor="transparent" translucent />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.flex}
@@ -138,7 +130,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
                   isNameFocused && styles.inputFocused,
                 ]}
                 placeholder="Adınızı ve soyadınızı girin"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.placeholder}
                 value={fullName}
                 onChangeText={setFullName}
                 editable={!loading}
@@ -156,7 +148,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
                   isUsernameFocused && styles.inputFocused,
                 ]}
                 placeholder="Bir kullanıcı adı belirleyin"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.placeholder}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -174,8 +166,8 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
                   styles.input,
                   isPasswordFocused && styles.inputFocused,
                 ]}
-                placeholder="En az 6 karakter şifre girin"
-                placeholderTextColor="#475569"
+                placeholder="En az 8 karakter şifre girin"
+                placeholderTextColor={theme.colors.placeholder}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -194,7 +186,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
                   isConfirmPasswordFocused && styles.inputFocused,
                 ]}
                 placeholder="Şifrenizi tekrar girin"
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.colors.placeholder}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -240,5 +232,3 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
 };
 
 export default RegisterScreen;
-
-
